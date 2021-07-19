@@ -19,7 +19,7 @@ type PostRepoImpl struct {
 	postDto    domain.PostDto
 }
 
-func (p PostRepoImpl) FindAllPosts(page string) (*domain.PostList, error) {
+func (p PostRepoImpl) FindAllPosts(page string, newPosts bool) (*domain.PostList, error) {
 	conn := database.MongoConnectionPool.Get().(*database.Connection)
 	defer database.MongoConnectionPool.Put(conn)
 
@@ -32,6 +32,10 @@ func (p PostRepoImpl) FindAllPosts(page string) (*domain.PostList, error) {
 	}
 	findOptions.SetSkip((int64(pageNumber) - 1) * int64(perPage))
 	findOptions.SetLimit(int64(perPage))
+
+	if newPosts {
+		findOptions.SetSort(bson.D{{"createdAt", -1}})
+	}
 
 	query := bson.M{}
 
@@ -102,6 +106,7 @@ func (p PostRepoImpl) UpdateByTitle(post domain.Post) error {
 			"mainImage":   post.MainImage,
 			"storyImages": post.StoryImages,
 			"tag":         post.Tag,
+			"visible":     post.Visible,
 			"updated":      post.Updated,
 			"updatedAt":   post.UpdatedAt,
 		},

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/gofiber/fiber/v2"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"strconv"
 )
 
 type PostHandler struct {
@@ -13,8 +14,15 @@ type PostHandler struct {
 
 func (ph *PostHandler) GetAllPosts(c *fiber.Ctx) error {
 	page := c.Query("page", "1")
+	newStoriesQuery := c.Query("new", "false")
 
-	postList, err := ph.PostService.FindAllPosts(page)
+	isNew, err := strconv.ParseBool(newStoriesQuery)
+
+	if err != nil {
+		return c.Status(400).JSON(fiber.Map{"status": "error", "message": "error...", "data": fmt.Sprintf("must provide a valid value")})
+	}
+
+	postList, err := ph.PostService.FindAllPosts(page, isNew)
 
 	if err != nil {
 		return c.Status(400).JSON(fiber.Map{"status": "error", "message": "error...", "data": fmt.Sprintf("%v", err)})

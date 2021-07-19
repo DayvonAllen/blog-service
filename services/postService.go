@@ -7,7 +7,7 @@ import (
 )
 
 type PostService interface {
-	FindAllPosts(page string) (*domain.PostList, error)
+	FindAllPosts(page string, newPosts bool) (*domain.PostList, error)
 	FeaturedPosts() (*domain.PostList, error)
 	FindPostById(id primitive.ObjectID) (*domain.PostDto, error)
 }
@@ -16,8 +16,8 @@ type DefaultPostService struct {
 	repo repo.PostRepo
 }
 
-func (s DefaultPostService) FindAllPosts(page string) (*domain.PostList, error) {
-	postList, err := s.repo.FindAllPosts(page)
+func (s DefaultPostService) FindAllPosts(page string, newPosts bool) (*domain.PostList, error) {
+	postList, err := s.repo.FindAllPosts(page, newPosts)
 	if err != nil {
 		return nil, err
 	}

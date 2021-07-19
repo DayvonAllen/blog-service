@@ -6,7 +6,7 @@ import (
 )
 
 type PostRepo interface {
-	FindAllPosts(page string) (*domain.PostList, error)
+	FindAllPosts(page string, newPosts bool) (*domain.PostList, error)
 	FeaturedPosts() (*domain.PostList, error)
 	Create(post domain.Post) error
 	UpdateByTitle(post domain.Post) error
