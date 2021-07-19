@@ -5,12 +5,14 @@ import (
 	"com.aharakitchen/app/domain"
 	"context"
 	"fmt"
+	cache2 "github.com/go-redis/cache/v8"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"log"
 	"strconv"
 	"sync"
+	"time"
 )
 
 type PostRepoImpl struct {
@@ -134,7 +136,7 @@ func (p PostRepoImpl) FindPostById(id primitive.ObjectID) (*domain.PostDto, erro
 	return &p.postDto, nil
 }
 
-func (p PostRepoImpl) FeaturedPosts() (*domain.PostList, error) {
+func (p PostRepoImpl) FeaturedPosts(rdb *cache2.Cache) (*domain.PostList, error) {
 	conn := database.MongoConnectionPool.Get().(*database.Connection)
 	defer database.MongoConnectionPool.Put(conn)
 
@@ -164,6 +166,23 @@ func (p PostRepoImpl) FeaturedPosts() (*domain.PostList, error) {
 	p.postList.CurrentPage = 1
 	p.postList.NumberOfPages = 1
 	p.postList.NumberOfPosts = int64(len(p.postPreviews))
+
+	go func() {
+		fmt.Println("set cache")
+		err = rdb.Set(&cache2.Item{
+			Ctx:   context.TODO(),
+			Key:   "featuredstories",
+			Value: p.postList,
+			TTL:   time.Hour,
+		})
+
+		if err != nil {
+			fmt.Println("Found in cache in find by ID...")
+			panic(err)
+		}
+		fmt.Println("Cached in find by ID...")
+		return
+	}()
 
 	return &p.postList, nil
 }

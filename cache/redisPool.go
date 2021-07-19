@@ -7,7 +7,6 @@ import (
 	"time"
 )
 
-
 var RedisCachePool = sync.Pool{
 	// function to execute when no instance of a buffer is not found
 	New: func() interface{} {
