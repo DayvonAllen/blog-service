@@ -62,12 +62,19 @@ func (ph *PostHandler) GetPostById(c *fiber.Ctx) error {
 		return c.Status(400).JSON(fiber.Map{"status": "error", "message": "error...", "data": fmt.Sprintf("%v", err)})
 	}
 
-	post, err := ph.PostService.FindPostById(id)
+	rdb := cache.RedisCachePool.Get().(*cache2.Cache)
+	defer cache.RedisCachePool.Put(rdb)
+
+	p := new(domain.PostDto)
+	err = rdb.Get(context.TODO(), id.String()+"getbyID", p)
 
 	if err != nil {
-		return c.Status(400).JSON(fiber.Map{"status": "error", "message": "error...", "data": fmt.Sprintf("%v", err)})
+		post, err := ph.PostService.FindPostById(id, rdb)
+		if err != nil {
+			return c.Status(400).JSON(fiber.Map{"status": "error", "message": "error...", "data": fmt.Sprintf("%v", err)})
+		}
+		return c.Status(200).JSON(fiber.Map{"status": "success", "message": "success", "data": post})
 	}
 
-	return c.Status(200).JSON(fiber.Map{"status": "success", "message": "success", "data": post})
+	return c.Status(200).JSON(fiber.Map{"status": "success", "message": "success", "data": p})
 }
-

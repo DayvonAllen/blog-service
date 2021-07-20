@@ -10,7 +10,7 @@ import (
 type PostService interface {
 	FindAllPosts(page string, newPosts bool) (*domain.PostList, error)
 	FeaturedPosts(cache *cache2.Cache) (*domain.PostList, error)
-	FindPostById(id primitive.ObjectID) (*domain.PostDto, error)
+	FindPostById(id primitive.ObjectID, rdb *cache2.Cache) (*domain.PostDto, error)
 }
 
 type DefaultPostService struct {
@@ -33,8 +33,8 @@ func (s DefaultPostService) FeaturedPosts(cache *cache2.Cache) (*domain.PostList
 	return postList, nil
 }
 
-func (s DefaultPostService) FindPostById(id primitive.ObjectID) (*domain.PostDto, error) {
-	post, err := s.repo.FindPostById(id)
+func (s DefaultPostService) FindPostById(id primitive.ObjectID, rdb *cache2.Cache) (*domain.PostDto, error) {
+	post, err := s.repo.FindPostById(id, rdb)
 	if err != nil {
 		return nil, err
 	}

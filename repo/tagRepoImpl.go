@@ -1,15 +1,18 @@
 package repo
 
 import (
+	"com.aharakitchen/app/cache"
 	"com.aharakitchen/app/database"
 	"com.aharakitchen/app/domain"
 	"context"
 	"fmt"
+	cache2 "github.com/go-redis/cache/v8"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"log"
 	"strconv"
 	"sync"
+	"time"
 )
 
 type TagRepoImpl struct {
@@ -17,9 +20,10 @@ type TagRepoImpl struct {
 	postList   domain.PostList
 	tags []domain.TagDto
 	tag domain.Tag
+	tagList domain.TagList
 }
 
-func (t TagRepoImpl) FindAllTags() (*[]domain.TagDto, error) {
+func (t TagRepoImpl) FindAllTags(rdb *cache2.Cache) (*domain.TagList, error) {
 	conn := database.MongoConnectionPool.Get().(*database.Connection)
 	defer database.MongoConnectionPool.Put(conn)
 
@@ -36,7 +40,27 @@ func (t TagRepoImpl) FindAllTags() (*[]domain.TagDto, error) {
 	// Close the cursor once finished
 	err = cur.Close(context.TODO())
 
-	return &t.tags, nil
+	t.tagList.Tags = t.tags
+	t.tagList.NumberOfCategories = len(t.tags)
+
+	go func() {
+		fmt.Println("set cache")
+		err = rdb.Set(&cache2.Item{
+			Ctx:   context.TODO(),
+			Key:   "tagList",
+			Value: &t.tagList,
+			TTL:   time.Hour,
+		})
+
+		if err != nil {
+			fmt.Println("Found in cache in find by ID...")
+			panic(err)
+		}
+		fmt.Println("Cached in find by ID...")
+		return
+	}()
+
+	return &t.tagList, nil
 }
 
 func (t TagRepoImpl) FindAllPostsByCategory(category, page string) (*domain.PostList, error) {
@@ -107,6 +131,8 @@ func (t TagRepoImpl) FindAllPostsByCategory(category, page string) (*domain.Post
 func (t TagRepoImpl) Create(tag domain.Tag) error {
 	conn := database.MongoConnectionPool.Get().(*database.Connection)
 	defer database.MongoConnectionPool.Put(conn)
+	rdb := cache.RedisCachePool.Get().(*cache2.Cache)
+	defer cache.RedisCachePool.Put(rdb)
 
 	_, err := conn.TagCollection.InsertOne(context.TODO(), &tag)
 
@@ -114,18 +140,44 @@ func (t TagRepoImpl) Create(tag domain.Tag) error {
 		return fmt.Errorf("error processing data")
 	}
 
+	go func() {
+		err := rdb.Delete(context.TODO(), "tags")
+
+		if err != nil {
+			panic(err)
+		}
+
+		fmt.Println("Removed from cache, update current tag")
+
+		return
+	}()
+
 	return nil
 }
 
 func (t TagRepoImpl) UpdateTag(tag domain.Tag) error {
 	conn := database.MongoConnectionPool.Get().(*database.Connection)
 	defer database.MongoConnectionPool.Put(conn)
+	rdb := cache.RedisCachePool.Get().(*cache2.Cache)
+	defer cache.RedisCachePool.Put(rdb)
 
 	_, err := conn.TagCollection.UpdateOne(context.TODO(), bson.M{"_id": tag.Id}, bson.M{"$set": bson.M{"associatedPosts": tag.AssociatedPosts}})
 
 	if err != nil {
 		return fmt.Errorf("error processing data")
 	}
+
+	go func() {
+		err := rdb.Delete(context.TODO(), "tags")
+
+		if err != nil {
+			panic(err)
+		}
+
+		fmt.Println("Removed from cache, update current tag")
+
+		return
+	}()
 
 	return nil
 }

@@ -30,17 +30,16 @@ func ProcessMessage(message domain.Message) error {
 			return nil
 		}
 
-		// 204 is the deleted messageType
-		//if message.MessageType == 204 {
-		//	user := message.User
-		//
-		//	err := UserRepoImpl{}.DeleteByID(&user)
-		//
-		//	if err != nil {
-		//		return err
-		//	}
-		//	return nil
-		//}
+		//204 is the deleted messageType
+		if message.MessageType == 204 {
+			posts := message.Post
+			err := PostRepoImpl{}.DeleteById(posts)
+
+			if err != nil {
+				return err
+			}
+			return nil
+		}
 	}
 
 	if message.ResourceType == "tag" {
@@ -65,18 +64,6 @@ func ProcessMessage(message domain.Message) error {
 			}
 			return nil
 		}
-
-		// 204 is the deleted messageType
-		//if message.MessageType == 204 {
-		//	user := message.User
-		//
-		//	err := UserRepoImpl{}.DeleteByID(&user)
-		//
-		//	if err != nil {
-		//		return err
-		//	}
-		//	return nil
-		//}
 	}
 
 	return fmt.Errorf("cannot process this message")

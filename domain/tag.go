@@ -18,3 +18,8 @@ type TagDto struct {
 	Value          string `bson:"value" json:"value"`
 	AssociatedPosts []primitive.ObjectID `bson:"associatedPosts" json:"-"`
 }
+
+type TagList struct {
+	Tags				[]TagDto `bson:"tags" json:"tags"`
+	NumberOfCategories int `bson:"numberOfCategories" json:"numberOfCategories"`
+}

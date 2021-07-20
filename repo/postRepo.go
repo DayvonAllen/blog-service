@@ -11,5 +11,6 @@ type PostRepo interface {
 	FeaturedPosts(cache *cache2.Cache) (*domain.PostList, error)
 	Create(post domain.Post) error
 	UpdateByTitle(post domain.Post) error
-	FindPostById(id primitive.ObjectID) (*domain.PostDto, error)
+	DeleteById(post domain.Post) error
+	FindPostById(id primitive.ObjectID, rdb *cache2.Cache) (*domain.PostDto, error)
 }

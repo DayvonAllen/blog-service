@@ -1,6 +1,7 @@
 package repo
 
 import (
+	"com.aharakitchen/app/cache"
 	"com.aharakitchen/app/database"
 	"com.aharakitchen/app/domain"
 	"context"
@@ -55,7 +56,7 @@ func (p PostRepoImpl) FindAllPosts(page string, newPosts bool) (*domain.PostList
 		if err = cur.All(context.TODO(), &p.postPreviews); err != nil {
 			log.Fatal(err)
 		}
-
+		return
 	}()
 
 	go func() {
@@ -99,6 +100,8 @@ func (p PostRepoImpl) Create(post domain.Post) error {
 func (p PostRepoImpl) UpdateByTitle(post domain.Post) error {
 	conn := database.MongoConnectionPool.Get().(*database.Connection)
 	defer database.MongoConnectionPool.Put(conn)
+	rdb := cache.RedisCachePool.Get().(*cache2.Cache)
+	defer cache.RedisCachePool.Put(rdb)
 
 	updatedPost := new(domain.Post)
 	err := conn.PostCollection.FindOneAndUpdate(context.TODO(), bson.D{{"_id", post.Id}},
@@ -118,10 +121,49 @@ func (p PostRepoImpl) UpdateByTitle(post domain.Post) error {
 		return fmt.Errorf("error processing data")
 	}
 
+	go func() {
+		err := rdb.Delete(context.TODO(), post.Id.String() + "getbyID")
+
+		if err != nil {
+			panic(err)
+		}
+
+		fmt.Println("Removed from cache, update current tag")
+
+		return
+	}()
+
 	return nil
 }
 
-func (p PostRepoImpl) FindPostById(id primitive.ObjectID) (*domain.PostDto, error) {
+func (p PostRepoImpl) DeleteById(post domain.Post) error {
+	conn := database.MongoConnectionPool.Get().(*database.Connection)
+	defer database.MongoConnectionPool.Put(conn)
+	rdb := cache.RedisCachePool.Get().(*cache2.Cache)
+	defer cache.RedisCachePool.Put(rdb)
+
+	_, err := conn.PostCollection.DeleteOne(context.TODO(), bson.D{{"_id", post.Id}})
+
+	if err != nil {
+		return fmt.Errorf("error processing data")
+	}
+
+	go func() {
+		err := rdb.Delete(context.TODO(), post.Id.String() + "getbyID")
+
+		if err != nil {
+			panic(err)
+		}
+
+		fmt.Println("Removed from cache, delete current tag")
+
+		return
+	}()
+
+	return nil
+}
+
+func (p PostRepoImpl) FindPostById(id primitive.ObjectID, rdb *cache2.Cache) (*domain.PostDto, error) {
 	conn := database.MongoConnectionPool.Get().(*database.Connection)
 	defer database.MongoConnectionPool.Put(conn)
 
@@ -132,6 +174,23 @@ func (p PostRepoImpl) FindPostById(id primitive.ObjectID) (*domain.PostDto, erro
 	if err != nil {
 		return nil, err
 	}
+
+	go func() {
+		fmt.Println("set cache")
+		err = rdb.Set(&cache2.Item{
+			Ctx:   context.TODO(),
+			Key:   id.String() + "getbyID",
+			Value: p.postDto,
+			TTL:   time.Hour,
+		})
+
+		if err != nil {
+			fmt.Println("Found in cache in find by ID...")
+			panic(err)
+		}
+		fmt.Println("Cached in find by ID...")
+		return
+	}()
 
 	return &p.postDto, nil
 }
