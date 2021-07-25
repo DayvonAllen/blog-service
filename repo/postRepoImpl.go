@@ -115,7 +115,7 @@ func (p PostRepoImpl) UpdateByTitle(post domain.Post) error {
 		}
 	}(conn, context.TODO())
 
-	rdb := database.ConnectToRedis().Get()
+	//rdb := database.ConnectToRedis().Get()
 
 	updatedPost := new(domain.Post)
 	err := conn.PostCollection.FindOneAndUpdate(context.TODO(), bson.D{{"_id", post.Id}},
@@ -135,11 +135,11 @@ func (p PostRepoImpl) UpdateByTitle(post domain.Post) error {
 		return fmt.Errorf("error processing data")
 	}
 
-	_, err = rdb.Do("DELETE", post.Id.String() + "getbyID")
-
-	if err != nil {
-		panic(err)
-	}
+	//_, err = rdb.Do("DELETE", post.Id.String() + "getbyID")
+	//
+	//if err != nil {
+	//	panic(err)
+	//}
 
 	fmt.Println("Removed from cache, update current tag")
 
@@ -156,7 +156,7 @@ func (p PostRepoImpl) DeleteById(post domain.Post) error {
 		}
 	}(conn, context.TODO())
 
-	rdb := database.ConnectToRedis().Get()
+	//rdb := database.ConnectToRedis().Get()
 
 	_, err := conn.PostCollection.DeleteOne(context.TODO(), bson.D{{"_id", post.Id}})
 
@@ -164,11 +164,11 @@ func (p PostRepoImpl) DeleteById(post domain.Post) error {
 		return fmt.Errorf("error processing data")
 	}
 
-	_, err = rdb.Do("DELETE", post.Id.String() + "getbyID")
-
-	if err != nil {
-		panic(err)
-	}
+	//_, err = rdb.Do("DELETE", post.Id.String() + "getbyID")
+	//
+	//if err != nil {
+	//	panic(err)
+	//}
 
 	fmt.Println("Removed from cache, delete current tag")
 

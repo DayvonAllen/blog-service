@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"log"
 	"strconv"
@@ -13,11 +14,11 @@ import (
 )
 
 type TagRepoImpl struct {
-	postPreviews   []domain.PostPreviewDto
-	postList   domain.PostList
-	tags []domain.TagDto
-	tag domain.Tag
-	tagList domain.TagList
+	postPreviews []domain.PostPreviewDto
+	postList     domain.PostList
+	tags         []domain.TagDto
+	tag          domain.Tag
+	tagList      domain.TagList
 }
 
 func (t TagRepoImpl) FindAllTags() (*domain.TagList, error) {
@@ -47,7 +48,7 @@ func (t TagRepoImpl) FindAllTags() (*domain.TagList, error) {
 
 	rdb := database.ConnectToRedis().Get()
 
-	_, err = rdb.Do("SET", "tagList",&t.tagList)
+	_, err = rdb.Do("SET", "tagList", &t.tagList)
 
 	return &t.tagList, nil
 }
@@ -99,7 +100,7 @@ func (t TagRepoImpl) FindAllPostsByCategory(category, page string) (*domain.Post
 
 	go func() {
 		defer wg.Done()
-		count, err:= conn.PostCollection.CountDocuments(context.TODO(),query)
+		count, err := conn.PostCollection.CountDocuments(context.TODO(), query)
 
 		if err != nil {
 			panic(err)
@@ -110,7 +111,7 @@ func (t TagRepoImpl) FindAllPostsByCategory(category, page string) (*domain.Post
 		if t.postList.NumberOfPosts < 10 {
 			t.postList.NumberOfPages = 1
 		} else {
-			t.postList.NumberOfPages = int(count / 10) + 1
+			t.postList.NumberOfPages = int(count/10) + 1
 		}
 	}()
 
@@ -131,21 +132,29 @@ func (t TagRepoImpl) Create(tag domain.Tag) error {
 
 		}
 	}(conn, context.TODO())
-	rdb := database.ConnectToRedis().Get()
+	//rdb := database.ConnectToRedis().Get()
 
-	_, err := conn.TagCollection.InsertOne(context.TODO(), &tag)
+	err := conn.TagCollection.FindOneAndReplace(context.TODO(), bson.D{{"value", tag.Value}}, &tag).Decode(&t.tag)
 
 	if err != nil {
-		return fmt.Errorf("error processing data")
+		if err == mongo.ErrNoDocuments {
+			_, err := conn.TagCollection.InsertOne(context.TODO(), &tag)
+
+			if err != nil {
+				return fmt.Errorf("error processing data")
+			}
+
+		}
+		return err
 	}
 
-	_, err = rdb.Do("DELETE", "tags")
+	//_, err = rdb.Do("DELETE", "tags")
+	//
+	//if err != nil {
+	//		panic(err)
+	//	}
 
-	if err != nil {
-			panic(err)
-		}
-
-		fmt.Println("Removed from cache, update current tag")
+	fmt.Println("Removed from cache, update current tag")
 
 	return nil
 }
@@ -159,16 +168,15 @@ func (t TagRepoImpl) UpdateTag(tag domain.Tag) error {
 
 		}
 	}(conn, context.TODO())
-	rdb := database.ConnectToRedis().Get()
+	//rdb := database.ConnectToRedis().Get()
 
-
-	_, err := conn.TagCollection.UpdateOne(context.TODO(), bson.M{"_id": tag.Id}, bson.M{"$set": bson.M{"associatedPosts": tag.AssociatedPosts}})
+	err := conn.TagCollection.FindOneAndReplace(context.TODO(), bson.D{{"value", tag.Value}}, &tag).Decode(&t.tag)
 
 	if err != nil {
-		return fmt.Errorf("error processing data")
+		return err
 	}
 
-	_, err = rdb.Do("DELETE", "tags")
+	//_, err = rdb.Do("DELETE", "tags")
 
 	return nil
 }

@@ -97,15 +97,15 @@ func (consumer *Consumer) Cleanup(sarama.ConsumerGroupSession) error {
 // ConsumeClaim must start a consumer loop of ConsumerGroupClaim's Messages().
 func (consumer *Consumer) ConsumeClaim(session sarama.ConsumerGroupSession, claim sarama.ConsumerGroupClaim) error {
 	for message := range claim.Messages() {
-		post := new(domain.Message)
-		err := msgpack.Unmarshal(message.Value, post)
-		log.Printf("Message claimed: value = %v, timestamp = %v, topic = %s", post, message.Timestamp, message.Topic)
+		receivedMessage := new(domain.Message)
+		err := msgpack.Unmarshal(message.Value, receivedMessage)
+		log.Printf("Message claimed: value = %v, timestamp = %v, topic = %s", receivedMessage, message.Timestamp, message.Topic)
 
 		if err != nil {
 			return err
 		}
 
-		err = repo.ProcessMessage(*post)
+		err = repo.ProcessMessage(*receivedMessage)
 
 		if err != nil {
 			return err
