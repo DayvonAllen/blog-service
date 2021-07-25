@@ -1,12 +1,11 @@
 package handlers
 
 import (
-	"com.aharakitchen/app/cache"
+	"com.aharakitchen/app/database"
 	"com.aharakitchen/app/domain"
 	"com.aharakitchen/app/services"
 	"context"
 	"fmt"
-	cache2 "github.com/go-redis/cache/v8"
 	"github.com/gofiber/fiber/v2"
 )
 
@@ -28,8 +27,8 @@ func (th *TagHandler) GetAllPostsByTags(c *fiber.Ctx) error {
 }
 
 func (th *TagHandler) GetAllTags(c *fiber.Ctx) error {
-	rdb := cache.RedisCachePool.Get().(*cache2.Cache)
-	defer cache.RedisCachePool.Put(rdb)
+	rdb := database.ConnectToRedis()
+
 
 	t := new(domain.TagList)
 	err := rdb.Get(context.TODO(), "tagList", t)

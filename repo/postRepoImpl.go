@@ -1,7 +1,6 @@
 package repo
 
 import (
-	"com.aharakitchen/app/cache"
 	"com.aharakitchen/app/database"
 	"com.aharakitchen/app/domain"
 	"context"
@@ -23,8 +22,14 @@ type PostRepoImpl struct {
 }
 
 func (p PostRepoImpl) FindAllPosts(page string, newPosts bool) (*domain.PostList, error) {
-	conn := database.MongoConnectionPool.Get().(*database.Connection)
-	defer database.MongoConnectionPool.Put(conn)
+	conn, _ := database.ConnectToDB()
+
+	defer func(conn *database.Connection, ctx context.Context) {
+		err := conn.Disconnect(ctx)
+		if err != nil {
+
+		}
+	}(conn, context.TODO())
 
 	findOptions := options.FindOptions{}
 	perPage := 10
@@ -45,7 +50,7 @@ func (p PostRepoImpl) FindAllPosts(page string, newPosts bool) (*domain.PostList
 	var wg sync.WaitGroup
 	wg.Add(2)
 
-	go func() {
+	go func(conn *database.Connection) {
 		defer wg.Done()
 		cur, err := conn.PostCollection.Find(context.TODO(), query, &findOptions)
 
@@ -57,9 +62,9 @@ func (p PostRepoImpl) FindAllPosts(page string, newPosts bool) (*domain.PostList
 			log.Fatal(err)
 		}
 		return
-	}()
+	}(conn)
 
-	go func() {
+	go func(conn *database.Connection) {
 		defer wg.Done()
 		count, err:= conn.PostCollection.CountDocuments(context.TODO(),query)
 
@@ -74,7 +79,7 @@ func (p PostRepoImpl) FindAllPosts(page string, newPosts bool) (*domain.PostList
 		} else {
 			p.postList.NumberOfPages = int(count / 10) + 1
 		}
-	}()
+	}(conn)
 
 	wg.Wait()
 
@@ -85,9 +90,14 @@ func (p PostRepoImpl) FindAllPosts(page string, newPosts bool) (*domain.PostList
 }
 
 func (p PostRepoImpl) Create(post domain.Post) error {
-	conn := database.MongoConnectionPool.Get().(*database.Connection)
-	defer database.MongoConnectionPool.Put(conn)
+	conn, _ := database.ConnectToDB()
 
+	defer func(conn *database.Connection, ctx context.Context) {
+		err := conn.Disconnect(ctx)
+		if err != nil {
+
+		}
+	}(conn, context.TODO())
 	_, err := conn.PostCollection.InsertOne(context.TODO(), &post)
 
 	if err != nil {
@@ -98,10 +108,16 @@ func (p PostRepoImpl) Create(post domain.Post) error {
 }
 
 func (p PostRepoImpl) UpdateByTitle(post domain.Post) error {
-	conn := database.MongoConnectionPool.Get().(*database.Connection)
-	defer database.MongoConnectionPool.Put(conn)
-	rdb := cache.RedisCachePool.Get().(*cache2.Cache)
-	defer cache.RedisCachePool.Put(rdb)
+	conn, _ := database.ConnectToDB()
+
+	defer func(conn *database.Connection, ctx context.Context) {
+		err := conn.Disconnect(ctx)
+		if err != nil {
+
+		}
+	}(conn, context.TODO())
+
+	rdb := database.ConnectToRedis()
 
 	updatedPost := new(domain.Post)
 	err := conn.PostCollection.FindOneAndUpdate(context.TODO(), bson.D{{"_id", post.Id}},
@@ -121,26 +137,28 @@ func (p PostRepoImpl) UpdateByTitle(post domain.Post) error {
 		return fmt.Errorf("error processing data")
 	}
 
-	go func() {
-		err := rdb.Delete(context.TODO(), post.Id.String() + "getbyID")
+	err = rdb.Delete(context.TODO(), post.Id.String() + "getbyID")
 
-		if err != nil {
-			panic(err)
-		}
+	if err != nil {
+		panic(err)
+	}
 
-		fmt.Println("Removed from cache, update current tag")
-
-		return
-	}()
+	fmt.Println("Removed from cache, update current tag")
 
 	return nil
 }
 
 func (p PostRepoImpl) DeleteById(post domain.Post) error {
-	conn := database.MongoConnectionPool.Get().(*database.Connection)
-	defer database.MongoConnectionPool.Put(conn)
-	rdb := cache.RedisCachePool.Get().(*cache2.Cache)
-	defer cache.RedisCachePool.Put(rdb)
+	conn, _ := database.ConnectToDB()
+
+	defer func(conn *database.Connection, ctx context.Context) {
+		err := conn.Disconnect(ctx)
+		if err != nil {
+
+		}
+	}(conn, context.TODO())
+
+	rdb := database.ConnectToRedis()
 
 	_, err := conn.PostCollection.DeleteOne(context.TODO(), bson.D{{"_id", post.Id}})
 
@@ -148,24 +166,26 @@ func (p PostRepoImpl) DeleteById(post domain.Post) error {
 		return fmt.Errorf("error processing data")
 	}
 
-	go func() {
-		err := rdb.Delete(context.TODO(), post.Id.String() + "getbyID")
+	err = rdb.Delete(context.TODO(), post.Id.String() + "getbyID")
 
-		if err != nil {
-			panic(err)
-		}
+	if err != nil {
+		panic(err)
+	}
 
-		fmt.Println("Removed from cache, delete current tag")
-
-		return
-	}()
+	fmt.Println("Removed from cache, delete current tag")
 
 	return nil
 }
 
 func (p PostRepoImpl) FindPostById(id primitive.ObjectID, rdb *cache2.Cache) (*domain.PostDto, error) {
-	conn := database.MongoConnectionPool.Get().(*database.Connection)
-	defer database.MongoConnectionPool.Put(conn)
+	conn, _ := database.ConnectToDB()
+
+	defer func(conn *database.Connection, ctx context.Context) {
+		err := conn.Disconnect(ctx)
+		if err != nil {
+
+		}
+	}(conn, context.TODO())
 
 	query := bson.D{{"_id", id}}
 
@@ -175,29 +195,32 @@ func (p PostRepoImpl) FindPostById(id primitive.ObjectID, rdb *cache2.Cache) (*d
 		return nil, err
 	}
 
-	go func() {
-		fmt.Println("set cache")
-		err = rdb.Set(&cache2.Item{
-			Ctx:   context.TODO(),
-			Key:   id.String() + "getbyID",
-			Value: p.postDto,
-			TTL:   time.Hour,
-		})
+	fmt.Println("set cache")
+	err = rdb.Set(&cache2.Item{
+		Ctx:   context.TODO(),
+		Key:   id.String() + "getbyID",
+		Value: p.postDto,
+		TTL:   time.Hour,
+	})
 
-		if err != nil {
-			fmt.Println("Found in cache in find by ID...")
-			panic(err)
-		}
-		fmt.Println("Cached in find by ID...")
-		return
-	}()
+	if err != nil {
+		fmt.Println("Found in cache in find by ID...")
+		panic(err)
+	}
+	fmt.Println("Cached in find by ID...")
 
 	return &p.postDto, nil
 }
 
 func (p PostRepoImpl) FeaturedPosts(rdb *cache2.Cache) (*domain.PostList, error) {
-	conn := database.MongoConnectionPool.Get().(*database.Connection)
-	defer database.MongoConnectionPool.Put(conn)
+	conn, _ := database.ConnectToDB()
+
+	defer func(conn *database.Connection, ctx context.Context) {
+		err := conn.Disconnect(ctx)
+		if err != nil {
+
+		}
+	}(conn, context.TODO())
 
 	findOptions := options.FindOptions{}
 
@@ -226,23 +249,19 @@ func (p PostRepoImpl) FeaturedPosts(rdb *cache2.Cache) (*domain.PostList, error)
 	p.postList.NumberOfPages = 1
 	p.postList.NumberOfPosts = int64(len(p.postPreviews))
 
-	go func() {
-		fmt.Println("set cache")
-		err = rdb.Set(&cache2.Item{
-			Ctx:   context.TODO(),
-			Key:   "featuredstories",
-			Value: p.postList,
-			TTL:   time.Hour,
-		})
+	fmt.Println("set cache")
+	err = rdb.Set(&cache2.Item{
+		Ctx:   context.TODO(),
+		Key:   "featuredstories",
+		Value: p.postList,
+		TTL:   time.Hour,
+	})
 
-		if err != nil {
-			fmt.Println("Found in cache in find by ID...")
-			panic(err)
-		}
-		fmt.Println("Cached in find by ID...")
-		return
-	}()
-
+	if err != nil {
+		fmt.Println("Found in cache in find by ID...")
+		panic(err)
+	}
+	fmt.Println("Cached in find by ID...")
 	return &p.postList, nil
 }
 

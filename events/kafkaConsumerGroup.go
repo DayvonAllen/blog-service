@@ -25,7 +25,7 @@ func KafkaConsumerGroup() {
 	kafkaConfig := sarama.NewConfig()
 	kafkaConfig.Consumer.Group.Rebalance.Strategy = sarama.BalanceStrategyRoundRobin
 	kafkaConfig.Consumer.Offsets.Initial = sarama.OffsetOldest
-	group := "go-kafka-blog-consumer"
+	group := "go-kafka-blog-consumer1"
 	brokers := []string{"localhost:19092"}
 
 	consumer := Consumer{

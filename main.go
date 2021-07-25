@@ -7,14 +7,17 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"runtime"
 )
 
 func init() {
 	// create database connection instance for first time
 	go events.KafkaConsumerGroup()
+	fmt.Println(runtime.NumGoroutine())
 }
 
 func main() {
+	fmt.Println(runtime.NumGoroutine())
 	app := router.Setup()
 
 	// graceful shutdown on signal interrupts
@@ -24,6 +27,7 @@ func main() {
 	go func() {
 		_ = <-c
 		fmt.Println("Shutting down...")
+		fmt.Println(runtime.NumGoroutine())
 		_ = app.Shutdown()
 	}()
 

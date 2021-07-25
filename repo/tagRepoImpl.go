@@ -1,7 +1,6 @@
 package repo
 
 import (
-	"com.aharakitchen/app/cache"
 	"com.aharakitchen/app/database"
 	"com.aharakitchen/app/domain"
 	"context"
@@ -24,9 +23,14 @@ type TagRepoImpl struct {
 }
 
 func (t TagRepoImpl) FindAllTags(rdb *cache2.Cache) (*domain.TagList, error) {
-	conn := database.MongoConnectionPool.Get().(*database.Connection)
-	defer database.MongoConnectionPool.Put(conn)
+	conn, _ := database.ConnectToDB()
 
+	defer func(conn *database.Connection, ctx context.Context) {
+		err := conn.Disconnect(ctx)
+		if err != nil {
+
+		}
+	}(conn, context.TODO())
 	cur, err := conn.TagCollection.Find(context.TODO(), bson.M{})
 
 	if err != nil {
@@ -64,9 +68,14 @@ func (t TagRepoImpl) FindAllTags(rdb *cache2.Cache) (*domain.TagList, error) {
 }
 
 func (t TagRepoImpl) FindAllPostsByCategory(category, page string) (*domain.PostList, error) {
-	conn := database.MongoConnectionPool.Get().(*database.Connection)
-	defer database.MongoConnectionPool.Put(conn)
+	conn, _ := database.ConnectToDB()
 
+	defer func(conn *database.Connection, ctx context.Context) {
+		err := conn.Disconnect(ctx)
+		if err != nil {
+
+		}
+	}(conn, context.TODO())
 	err := conn.TagCollection.FindOne(context.TODO(), bson.D{{"value", category}}).Decode(&t.tag)
 
 	if err != nil {
@@ -129,10 +138,16 @@ func (t TagRepoImpl) FindAllPostsByCategory(category, page string) (*domain.Post
 }
 
 func (t TagRepoImpl) Create(tag domain.Tag) error {
-	conn := database.MongoConnectionPool.Get().(*database.Connection)
-	defer database.MongoConnectionPool.Put(conn)
-	rdb := cache.RedisCachePool.Get().(*cache2.Cache)
-	defer cache.RedisCachePool.Put(rdb)
+	conn, _ := database.ConnectToDB()
+
+	defer func(conn *database.Connection, ctx context.Context) {
+		err := conn.Disconnect(ctx)
+		if err != nil {
+
+		}
+	}(conn, context.TODO())
+	rdb := database.ConnectToRedis()
+
 
 	_, err := conn.TagCollection.InsertOne(context.TODO(), &tag)
 
@@ -156,10 +171,16 @@ func (t TagRepoImpl) Create(tag domain.Tag) error {
 }
 
 func (t TagRepoImpl) UpdateTag(tag domain.Tag) error {
-	conn := database.MongoConnectionPool.Get().(*database.Connection)
-	defer database.MongoConnectionPool.Put(conn)
-	rdb := cache.RedisCachePool.Get().(*cache2.Cache)
-	defer cache.RedisCachePool.Put(rdb)
+	conn, _ := database.ConnectToDB()
+
+	defer func(conn *database.Connection, ctx context.Context) {
+		err := conn.Disconnect(ctx)
+		if err != nil {
+
+		}
+	}(conn, context.TODO())
+	rdb := database.ConnectToRedis()
+
 
 	_, err := conn.TagCollection.UpdateOne(context.TODO(), bson.M{"_id": tag.Id}, bson.M{"$set": bson.M{"associatedPosts": tag.AssociatedPosts}})
 
