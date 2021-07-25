@@ -1,7 +1,6 @@
 package database
 
 import (
-	"com.aharakitchen/app/config"
 	"context"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -17,9 +16,9 @@ type Connection struct {
 }
 
 func ConnectToDB() (*Connection, error) {
-	p := config.Config("DB_PORT")
-	n := config.Config("DB_NAME")
-	h := config.Config("DB_HOST")
+	//p := config.Config("DB_PORT")
+	//n := config.Config("DB_NAME")
+	//h := config.Config("DB_HOST")
 
 	ctx, cancel := context.WithTimeout(context.Background(), 7*time.Second)
 	defer cancel()
@@ -29,13 +28,13 @@ func ConnectToDB() (*Connection, error) {
 		//SocketTimeout: &socketTimeOut,
 	}
 
-	client, err := mongo.Connect(ctx, dbOptions.ApplyURI(n+h+p))
+	client, err := mongo.Connect(ctx, dbOptions.ApplyURI("mongodb://backend-mongo-srv:27017/blog"))
 	if err != nil {
 		return nil, err
 	}
 
 	// create database
-	db := client.Database("blog-service")
+	db := client.Database("blog")
 
 	// create collection
 	postsCollection := db.Collection("posts")

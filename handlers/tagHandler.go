@@ -4,7 +4,6 @@ import (
 	"com.aharakitchen/app/database"
 	"com.aharakitchen/app/domain"
 	"com.aharakitchen/app/services"
-	"context"
 	"fmt"
 	"github.com/gofiber/fiber/v2"
 )
@@ -27,14 +26,13 @@ func (th *TagHandler) GetAllPostsByTags(c *fiber.Ctx) error {
 }
 
 func (th *TagHandler) GetAllTags(c *fiber.Ctx) error {
-	rdb := database.ConnectToRedis()
-
+	rdb := database.ConnectToRedis().Get()
 
 	t := new(domain.TagList)
-	err := rdb.Get(context.TODO(), "tagList", t)
+	_, err := rdb.Do("GET", " tagList", t)
 
 	if err != nil {
-		tags, err := th.TagService.FindAllTags(rdb)
+		tags, err := th.TagService.FindAllTags()
 
 		if err != nil {
 			return c.Status(400).JSON(fiber.Map{"status": "error", "message": "error...", "data": fmt.Sprintf("%v", err)})

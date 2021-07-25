@@ -1,21 +1,14 @@
 package database
 
 import (
-	"github.com/go-redis/cache/v8"
-	"github.com/go-redis/redis/v8"
-	"time"
+	"github.com/gomodule/redigo/redis"
 )
 
-func ConnectToRedis() *cache.Cache {
-	red := cache.New(&cache.Options{
-		Redis: redis.NewRing(&redis.RingOptions{
-			Addrs: map[string]string{
-				"server1": ":6379",
-			},
-		}),
-		LocalCache: cache.NewTinyLFU(1000, time.Minute),
-	})
-
-
-	return red
+func ConnectToRedis() *redis.Pool{
+	const maxConnections = 10
+	redisPool := &redis.Pool{
+		MaxIdle: maxConnections,
+		Dial:    func() (redis.Conn, error) { return redis.Dial("tcp", "backend-redis-srv:6379") },
+	}
+	return redisPool
 }

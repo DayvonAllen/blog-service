@@ -1,7 +1,6 @@
 package events
 
 import (
-	"com.aharakitchen/app/config"
 	"com.aharakitchen/app/domain"
 	"com.aharakitchen/app/repo"
 	"context"
@@ -10,6 +9,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"strings"
 	"sync"
 	"syscall"
 )
@@ -20,13 +20,19 @@ type Consumer struct {
 }
 
 func KafkaConsumerGroup() {
-	topic := config.Config("TOPIC")
-	secondTopic := config.Config("SECONDARY_TOPIC")
+	//topic := config.Config("TOPIC")
+	//secondTopic := config.Config("SECONDARY_TOPIC")
+	namesArr := make([]string, 0, 10)
+
+	for _, v := range strings.Split("kafka:9092", ",") {
+		namesArr = append(namesArr, v)
+	}
+
 	kafkaConfig := sarama.NewConfig()
 	kafkaConfig.Consumer.Group.Rebalance.Strategy = sarama.BalanceStrategyRoundRobin
 	kafkaConfig.Consumer.Offsets.Initial = sarama.OffsetOldest
-	group := "go-kafka-blog-consumer1"
-	brokers := []string{"localhost:19092"}
+	group := "go-kafka-blog-consumer"
+	brokers := namesArr
 
 	consumer := Consumer{
 		ready: make(chan bool),
@@ -40,7 +46,7 @@ func KafkaConsumerGroup() {
 		log.Panicf("Error creating consumer group client: %v", err)
 	}
 
-	topics := []string{topic, secondTopic}
+	topics := []string{"post", "tag"}
 
 	wg := &sync.WaitGroup{}
 	wg.Add(1)

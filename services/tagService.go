@@ -3,12 +3,11 @@ package services
 import (
 	"com.aharakitchen/app/domain"
 	"com.aharakitchen/app/repo"
-	cache2 "github.com/go-redis/cache/v8"
 )
 
 type TagService interface {
 	FindAllPostsByCategory(category, page string) (*domain.PostList, error)
-	FindAllTags(rdb *cache2.Cache) (*domain.TagList, error)
+	FindAllTags() (*domain.TagList, error)
 }
 
 type DefaultTagService struct {
@@ -23,8 +22,8 @@ func (s DefaultTagService) FindAllPostsByCategory(category, page string) (*domai
 	return postList, nil
 }
 
-func (s DefaultTagService) FindAllTags(rdb *cache2.Cache) (*domain.TagList, error) {
-	tags, err := s.repo.FindAllTags(rdb)
+func (s DefaultTagService) FindAllTags() (*domain.TagList, error) {
+	tags, err := s.repo.FindAllTags()
 	if err != nil {
 		return nil, err
 	}

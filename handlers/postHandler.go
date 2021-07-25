@@ -4,7 +4,6 @@ import (
 	"com.aharakitchen/app/database"
 	"com.aharakitchen/app/domain"
 	"com.aharakitchen/app/services"
-	"context"
 	"fmt"
 	"github.com/gofiber/fiber/v2"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -35,14 +34,14 @@ func (ph *PostHandler) GetAllPosts(c *fiber.Ctx) error {
 }
 
 func (ph *PostHandler) GetFeaturedPosts(c *fiber.Ctx) error {
-	rdb := database.ConnectToRedis()
-
+	rdb := database.ConnectToRedis().Get()
 
 	pl := new(domain.PostList)
-	err := rdb.Get(context.TODO(), "featuredstories", pl)
+
+	_, err := rdb.Do("GET", "featuredstories", pl)
 
 	if err != nil {
-		postList, err := ph.PostService.FeaturedPosts(rdb)
+		postList, err := ph.PostService.FeaturedPosts()
 
 		if err != nil {
 			return c.Status(400).JSON(fiber.Map{"status": "error", "message": "error...", "data": fmt.Sprintf("%v", err)})
@@ -61,13 +60,14 @@ func (ph *PostHandler) GetPostById(c *fiber.Ctx) error {
 		return c.Status(400).JSON(fiber.Map{"status": "error", "message": "error...", "data": fmt.Sprintf("%v", err)})
 	}
 
-	rdb := database.ConnectToRedis()
+	rdb := database.ConnectToRedis().Get()
 
 	p := new(domain.PostDto)
-	err = rdb.Get(context.TODO(), id.String()+"getbyID", p)
+
+	_, err = rdb.Do("GET", id.String()+"getbyID", p)
 
 	if err != nil {
-		post, err := ph.PostService.FindPostById(id, rdb)
+		post, err := ph.PostService.FindPostById(id)
 		if err != nil {
 			return c.Status(400).JSON(fiber.Map{"status": "error", "message": "error...", "data": fmt.Sprintf("%v", err)})
 		}

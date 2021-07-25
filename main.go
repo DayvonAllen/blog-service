@@ -13,7 +13,6 @@ import (
 func init() {
 	// create database connection instance for first time
 	go events.KafkaConsumerGroup()
-	fmt.Println(runtime.NumGoroutine())
 }
 
 func main() {
@@ -31,7 +30,7 @@ func main() {
 		_ = app.Shutdown()
 	}()
 
-	if err := app.Listen(":8081"); err != nil {
+	if err := app.Listen(":8080"); err != nil {
 		log.Panic(err)
 	}
 }

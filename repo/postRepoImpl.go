@@ -5,14 +5,12 @@ import (
 	"com.aharakitchen/app/domain"
 	"context"
 	"fmt"
-	cache2 "github.com/go-redis/cache/v8"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"log"
 	"strconv"
 	"sync"
-	"time"
 )
 
 type PostRepoImpl struct {
@@ -117,7 +115,7 @@ func (p PostRepoImpl) UpdateByTitle(post domain.Post) error {
 		}
 	}(conn, context.TODO())
 
-	rdb := database.ConnectToRedis()
+	rdb := database.ConnectToRedis().Get()
 
 	updatedPost := new(domain.Post)
 	err := conn.PostCollection.FindOneAndUpdate(context.TODO(), bson.D{{"_id", post.Id}},
@@ -137,7 +135,7 @@ func (p PostRepoImpl) UpdateByTitle(post domain.Post) error {
 		return fmt.Errorf("error processing data")
 	}
 
-	err = rdb.Delete(context.TODO(), post.Id.String() + "getbyID")
+	_, err = rdb.Do("DELETE", post.Id.String() + "getbyID")
 
 	if err != nil {
 		panic(err)
@@ -158,7 +156,7 @@ func (p PostRepoImpl) DeleteById(post domain.Post) error {
 		}
 	}(conn, context.TODO())
 
-	rdb := database.ConnectToRedis()
+	rdb := database.ConnectToRedis().Get()
 
 	_, err := conn.PostCollection.DeleteOne(context.TODO(), bson.D{{"_id", post.Id}})
 
@@ -166,7 +164,7 @@ func (p PostRepoImpl) DeleteById(post domain.Post) error {
 		return fmt.Errorf("error processing data")
 	}
 
-	err = rdb.Delete(context.TODO(), post.Id.String() + "getbyID")
+	_, err = rdb.Do("DELETE", post.Id.String() + "getbyID")
 
 	if err != nil {
 		panic(err)
@@ -177,7 +175,7 @@ func (p PostRepoImpl) DeleteById(post domain.Post) error {
 	return nil
 }
 
-func (p PostRepoImpl) FindPostById(id primitive.ObjectID, rdb *cache2.Cache) (*domain.PostDto, error) {
+func (p PostRepoImpl) FindPostById(id primitive.ObjectID) (*domain.PostDto, error) {
 	conn, _ := database.ConnectToDB()
 
 	defer func(conn *database.Connection, ctx context.Context) {
@@ -195,13 +193,9 @@ func (p PostRepoImpl) FindPostById(id primitive.ObjectID, rdb *cache2.Cache) (*d
 		return nil, err
 	}
 
-	fmt.Println("set cache")
-	err = rdb.Set(&cache2.Item{
-		Ctx:   context.TODO(),
-		Key:   id.String() + "getbyID",
-		Value: p.postDto,
-		TTL:   time.Hour,
-	})
+	rdb := database.ConnectToRedis().Get()
+
+	_, err = rdb.Do("SET", id.String() + "getbyID", p.postDto)
 
 	if err != nil {
 		fmt.Println("Found in cache in find by ID...")
@@ -212,7 +206,7 @@ func (p PostRepoImpl) FindPostById(id primitive.ObjectID, rdb *cache2.Cache) (*d
 	return &p.postDto, nil
 }
 
-func (p PostRepoImpl) FeaturedPosts(rdb *cache2.Cache) (*domain.PostList, error) {
+func (p PostRepoImpl) FeaturedPosts() (*domain.PostList, error) {
 	conn, _ := database.ConnectToDB()
 
 	defer func(conn *database.Connection, ctx context.Context) {
@@ -249,13 +243,9 @@ func (p PostRepoImpl) FeaturedPosts(rdb *cache2.Cache) (*domain.PostList, error)
 	p.postList.NumberOfPages = 1
 	p.postList.NumberOfPosts = int64(len(p.postPreviews))
 
-	fmt.Println("set cache")
-	err = rdb.Set(&cache2.Item{
-		Ctx:   context.TODO(),
-		Key:   "featuredstories",
-		Value: p.postList,
-		TTL:   time.Hour,
-	})
+	rdb := database.ConnectToRedis().Get()
+
+	_, err = rdb.Do("SET", "featuredstories", p.postList)
 
 	if err != nil {
 		fmt.Println("Found in cache in find by ID...")
