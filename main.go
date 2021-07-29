@@ -15,10 +15,7 @@ func init() {
 	// create database connection instance for first time
 	go events.KafkaConsumerGroup()
 	database.ConnectToRedis()
-	_, err := database.ConnectToDB()
-	if err != nil {
-		return 
-	}
+	database.ConnectToDB()
 }
 
 func main() {

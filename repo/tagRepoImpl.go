@@ -24,14 +24,8 @@ type TagRepoImpl struct {
 }
 
 func (t TagRepoImpl) FindAllTags() (*domain.TagList, error) {
-	conn, _ := database.ConnectToDB()
+	conn := database.MongoConn
 
-	defer func(conn *database.Connection, ctx context.Context) {
-		err := conn.Disconnect(ctx)
-		if err != nil {
-
-		}
-	}(conn, context.TODO())
 	cur, err := conn.TagCollection.Find(context.TODO(), bson.M{})
 
 	if err != nil {
@@ -70,14 +64,7 @@ func (t TagRepoImpl) FindAllTags() (*domain.TagList, error) {
 }
 
 func (t TagRepoImpl) FindAllPostsByCategory(category, page string) (*domain.PostList, error) {
-	conn, _ := database.ConnectToDB()
-
-	defer func(conn *database.Connection, ctx context.Context) {
-		err := conn.Disconnect(ctx)
-		if err != nil {
-
-		}
-	}(conn, context.TODO())
+	conn := database.MongoConn
 
 	err := conn.TagCollection.FindOne(context.TODO(), bson.D{{"value", category}}).Decode(&t.tag)
 
@@ -140,14 +127,7 @@ func (t TagRepoImpl) FindAllPostsByCategory(category, page string) (*domain.Post
 }
 
 func (t TagRepoImpl) Create(tag domain.Tag) error {
-	conn, _ := database.ConnectToDB()
-
-	defer func(conn *database.Connection, ctx context.Context) {
-		err := conn.Disconnect(ctx)
-		if err != nil {
-
-		}
-	}(conn, context.TODO())
+	conn := database.MongoConn
 
 	err := conn.TagCollection.FindOneAndReplace(context.TODO(), bson.D{{"value", tag.Value}}, &tag).Decode(&t.tag)
 
@@ -177,14 +157,7 @@ func (t TagRepoImpl) Create(tag domain.Tag) error {
 }
 
 func (t TagRepoImpl) UpdateTag(tag domain.Tag) error {
-	conn, _ := database.ConnectToDB()
-
-	defer func(conn *database.Connection, ctx context.Context) {
-		err := conn.Disconnect(ctx)
-		if err != nil {
-
-		}
-	}(conn, context.TODO())
+	conn := database.MongoConn
 
 	err := conn.TagCollection.FindOneAndReplace(context.TODO(), bson.D{{"value", tag.Value}}, &tag).Decode(&t.tag)
 

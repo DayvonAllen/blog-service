@@ -8,6 +8,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/gomodule/redigo/redis"
 	"github.com/vmihailenco/msgpack/v5"
+	"runtime"
 )
 
 type TagHandler struct {
@@ -28,6 +29,8 @@ func (th *TagHandler) GetAllPostsByTags(c *fiber.Ctx) error {
 }
 
 func (th *TagHandler) GetAllTags(c *fiber.Ctx) error {
+	fmt.Println(runtime.NumGoroutine())
+
 	rdb := database.Conn.Get()
 
 	v, err := redis.Values(rdb.Do("HGETALL", "tags"))

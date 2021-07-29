@@ -17,7 +17,7 @@ type Connection struct {
 
 var MongoConn *Connection
 
-func ConnectToDB() (*Connection, error) {
+func ConnectToDB() {
 	//p := config.Config("DB_PORT")
 	//n := config.Config("DB_NAME")
 	//h := config.Config("DB_HOST")
@@ -32,7 +32,7 @@ func ConnectToDB() (*Connection, error) {
 
 	client, err := mongo.Connect(ctx, dbOptions.ApplyURI("mongodb://backend-mongo-srv:27017/blog"))
 	if err != nil {
-		return nil, err
+		panic(err)
 	}
 
 	// create database
@@ -46,5 +46,4 @@ func ConnectToDB() (*Connection, error) {
 
 	dbConnection := &Connection{client, postsCollection, tagsCollection,blackListCollection,db}
 	MongoConn = dbConnection
-	return dbConnection, nil
 }

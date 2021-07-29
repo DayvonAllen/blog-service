@@ -24,13 +24,6 @@ type PostRepoImpl struct {
 func (p PostRepoImpl) FindAllPosts(page string, newPosts bool) (*domain.PostList, error) {
 	conn := database.MongoConn
 
-	//defer func(conn *database.Connection, ctx context.Context) {
-	//	err := conn.Disconnect(ctx)
-	//	if err != nil {
-	//
-	//	}
-	//}(conn, context.TODO())
-
 	findOptions := options.FindOptions{}
 	perPage := 10
 	pageNumber, err := strconv.Atoi(page)
@@ -90,14 +83,8 @@ func (p PostRepoImpl) FindAllPosts(page string, newPosts bool) (*domain.PostList
 }
 
 func (p PostRepoImpl) Create(post domain.Post) error {
-	conn, _ := database.ConnectToDB()
+	conn := database.MongoConn
 
-	defer func(conn *database.Connection, ctx context.Context) {
-		err := conn.Disconnect(ctx)
-		if err != nil {
-
-		}
-	}(conn, context.TODO())
 	_, err := conn.PostCollection.InsertOne(context.TODO(), &post)
 
 	if err != nil {
@@ -108,14 +95,7 @@ func (p PostRepoImpl) Create(post domain.Post) error {
 }
 
 func (p PostRepoImpl) UpdateByTitle(post domain.Post) error {
-	conn, _ := database.ConnectToDB()
-
-	defer func(conn *database.Connection, ctx context.Context) {
-		err := conn.Disconnect(ctx)
-		if err != nil {
-
-		}
-	}(conn, context.TODO())
+	conn := database.MongoConn
 
 	rdb := database.Conn.Get()
 
@@ -149,14 +129,7 @@ func (p PostRepoImpl) UpdateByTitle(post domain.Post) error {
 }
 
 func (p PostRepoImpl) DeleteById(post domain.Post) error {
-	conn, _ := database.ConnectToDB()
-
-	defer func(conn *database.Connection, ctx context.Context) {
-		err := conn.Disconnect(ctx)
-		if err != nil {
-
-		}
-	}(conn, context.TODO())
+	conn := database.MongoConn
 
 	rdb := database.Conn.Get()
 
@@ -178,14 +151,7 @@ func (p PostRepoImpl) DeleteById(post domain.Post) error {
 }
 
 func (p PostRepoImpl) FindPostById(id primitive.ObjectID) (*domain.PostDto, error) {
-	conn, _ := database.ConnectToDB()
-
-	defer func(conn *database.Connection, ctx context.Context) {
-		err := conn.Disconnect(ctx)
-		if err != nil {
-
-		}
-	}(conn, context.TODO())
+	conn := database.MongoConn
 
 	query := bson.D{{"_id", id}}
 
@@ -225,14 +191,7 @@ func (p PostRepoImpl) FindPostById(id primitive.ObjectID) (*domain.PostDto, erro
 }
 
 func (p PostRepoImpl) FeaturedPosts() (*domain.PostList, error) {
-	conn, _ := database.ConnectToDB()
-
-	defer func(conn *database.Connection, ctx context.Context) {
-		err := conn.Disconnect(ctx)
-		if err != nil {
-
-		}
-	}(conn, context.TODO())
+	conn := database.MongoConn
 
 	findOptions := options.FindOptions{}
 
