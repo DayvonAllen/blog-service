@@ -33,6 +33,18 @@ type PostDto struct {
 	UpdatedAt time.Time          `bson:"updatedAt" json:"updatedAt"`
 }
 
+type RedisPostDto struct {
+	Title     string             `bson:"title" json:"title"`
+	Content   string             `bson:"content" json:"content"`
+	Author    string             `bson:"author" json:"author"`
+	MainImage string             `bson:"mainImage" json:"mainImage"`
+	StoryImages []byte		 `bson:"storyImages" json:"storyImages"`
+	Tag      string           `bson:"tag" json:"tag"`
+	Updated   bool               `bson:"updated" json:"updated"`
+	CreatedAt []byte         `bson:"createdAt" json:"createdAt"`
+	UpdatedAt []byte          `bson:"updatedAt" json:"updatedAt"`
+}
+
 type PostPreviewDto struct {
 	Id        primitive.ObjectID `bson:"_id" json:"id"`
 	Title     string             `json:"title"`
@@ -46,6 +58,13 @@ type PostPreviewDto struct {
 
 type PostList struct {
 	Posts []PostPreviewDto `json:"posts"`
+	NumberOfPosts int64		`json:"numberOfPosts"`
+	CurrentPage int			`json:"currentPage"`
+	NumberOfPages int		`json:"numberOfPages"`
+}
+
+type RedisPostList struct {
+	Posts []byte `json:"posts"`
 	NumberOfPosts int64		`json:"numberOfPosts"`
 	CurrentPage int			`json:"currentPage"`
 	NumberOfPages int		`json:"numberOfPages"`

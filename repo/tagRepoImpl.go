@@ -5,6 +5,8 @@ import (
 	"com.aharakitchen/app/domain"
 	"context"
 	"fmt"
+	"github.com/gomodule/redigo/redis"
+	"github.com/vmihailenco/msgpack/v5"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -46,9 +48,23 @@ func (t TagRepoImpl) FindAllTags() (*domain.TagList, error) {
 	t.tagList.Tags = t.tags
 	t.tagList.NumberOfCategories = len(t.tags)
 
-	rdb := database.ConnectToRedis().Get()
+	rdb := database.Conn.Get()
 
-	_, err = rdb.Do("SET", "tagList", &t.tagList)
+	rt := new(domain.RedisTagList)
+
+	b, err := msgpack.Marshal(&t.tagList.Tags)
+
+
+	rt.NumberOfCategories = t.tagList.NumberOfCategories
+	rt.Tags = b
+
+	_, err = rdb.Do("HMSET", redis.Args{}.Add("tags").AddFlat(rt)...)
+
+	if err != nil {
+		return nil, err
+	}
+
+	fmt.Println("set tags in the cache, find all tags")
 
 	return &t.tagList, nil
 }
@@ -132,7 +148,6 @@ func (t TagRepoImpl) Create(tag domain.Tag) error {
 
 		}
 	}(conn, context.TODO())
-	//rdb := database.ConnectToRedis().Get()
 
 	err := conn.TagCollection.FindOneAndReplace(context.TODO(), bson.D{{"value", tag.Value}}, &tag).Decode(&t.tag)
 
@@ -148,13 +163,15 @@ func (t TagRepoImpl) Create(tag domain.Tag) error {
 		return err
 	}
 
-	//_, err = rdb.Do("DELETE", "tags")
-	//
-	//if err != nil {
-	//		panic(err)
-	//	}
+	rdb := database.Conn.Get()
 
-	fmt.Println("Removed from cache, update current tag")
+	_, err = rdb.Do("HDEL", redis.Args{}.Add("tags").AddFlat(new(domain.RedisTagList))...)
+
+	if err != nil {
+		return err
+	}
+
+	fmt.Println("updated cache, create current tag")
 
 	return nil
 }
@@ -168,7 +185,6 @@ func (t TagRepoImpl) UpdateTag(tag domain.Tag) error {
 
 		}
 	}(conn, context.TODO())
-	//rdb := database.ConnectToRedis().Get()
 
 	err := conn.TagCollection.FindOneAndReplace(context.TODO(), bson.D{{"value", tag.Value}}, &tag).Decode(&t.tag)
 
@@ -176,7 +192,13 @@ func (t TagRepoImpl) UpdateTag(tag domain.Tag) error {
 		return err
 	}
 
-	//_, err = rdb.Do("DELETE", "tags")
+	rdb := database.Conn.Get()
+
+	_, err = rdb.Do("HDEL", redis.Args{}.Add("tags").AddFlat(new(domain.RedisTagList))...)
+
+	if err != nil {
+		return err
+	}
 
 	return nil
 }

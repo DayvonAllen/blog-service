@@ -6,6 +6,8 @@ import (
 	"com.aharakitchen/app/services"
 	"fmt"
 	"github.com/gofiber/fiber/v2"
+	"github.com/gomodule/redigo/redis"
+	"github.com/vmihailenco/msgpack/v5"
 )
 
 type TagHandler struct {
@@ -26,12 +28,11 @@ func (th *TagHandler) GetAllPostsByTags(c *fiber.Ctx) error {
 }
 
 func (th *TagHandler) GetAllTags(c *fiber.Ctx) error {
-	rdb := database.ConnectToRedis().Get()
+	rdb := database.Conn.Get()
 
-	t := new(domain.TagList)
-	_, err := rdb.Do("GET", " tagList", t)
+	v, err := redis.Values(rdb.Do("HGETALL", "tags"))
 
-	if err != nil {
+	if err != nil || len(v) == 0 {
 		tags, err := th.TagService.FindAllTags()
 
 		if err != nil {
@@ -40,6 +41,21 @@ func (th *TagHandler) GetAllTags(c *fiber.Ctx) error {
 
 		return c.Status(200).JSON(fiber.Map{"status": "success", "message": "success", "data": tags})
 	}
+
+	rtl := new(domain.RedisTagList)
+
+	if err := redis.ScanStruct(v, rtl); err != nil {
+		return c.Status(400).JSON(fiber.Map{"status": "error", "message": "error...", "data": fmt.Sprintf("%v", err)})
+	}
+
+	t := new(domain.TagList)
+
+	var tl []domain.TagDto
+
+	err = msgpack.Unmarshal(rtl.Tags, &tl)
+
+	t.Tags = tl
+	t.NumberOfCategories = rtl.NumberOfCategories
 
 	return c.Status(200).JSON(fiber.Map{"status": "success", "message": "success", "data": t})
 }

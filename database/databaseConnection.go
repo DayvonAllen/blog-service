@@ -15,6 +15,8 @@ type Connection struct {
 	*mongo.Database
 }
 
+var MongoConn *Connection
+
 func ConnectToDB() (*Connection, error) {
 	//p := config.Config("DB_PORT")
 	//n := config.Config("DB_NAME")
@@ -41,6 +43,8 @@ func ConnectToDB() (*Connection, error) {
 	tagsCollection := db.Collection("tags")
 	blackListCollection := db.Collection("blacklist")
 
+
 	dbConnection := &Connection{client, postsCollection, tagsCollection,blackListCollection,db}
+	MongoConn = dbConnection
 	return dbConnection, nil
 }

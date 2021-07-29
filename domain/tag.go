@@ -23,3 +23,8 @@ type TagList struct {
 	Tags				[]TagDto `bson:"tags" json:"tags"`
 	NumberOfCategories int `bson:"numberOfCategories" json:"numberOfCategories"`
 }
+
+type RedisTagList struct {
+	Tags				[]byte `bson:"tags" json:"tags"`
+	NumberOfCategories int `bson:"numberOfCategories" json:"numberOfCategories"`
+}

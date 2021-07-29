@@ -5,6 +5,8 @@ import (
 	"com.aharakitchen/app/domain"
 	"context"
 	"fmt"
+	"github.com/gomodule/redigo/redis"
+	"github.com/vmihailenco/msgpack/v5"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -20,14 +22,14 @@ type PostRepoImpl struct {
 }
 
 func (p PostRepoImpl) FindAllPosts(page string, newPosts bool) (*domain.PostList, error) {
-	conn, _ := database.ConnectToDB()
+	conn := database.MongoConn
 
-	defer func(conn *database.Connection, ctx context.Context) {
-		err := conn.Disconnect(ctx)
-		if err != nil {
-
-		}
-	}(conn, context.TODO())
+	//defer func(conn *database.Connection, ctx context.Context) {
+	//	err := conn.Disconnect(ctx)
+	//	if err != nil {
+	//
+	//	}
+	//}(conn, context.TODO())
 
 	findOptions := options.FindOptions{}
 	perPage := 10
@@ -115,7 +117,7 @@ func (p PostRepoImpl) UpdateByTitle(post domain.Post) error {
 		}
 	}(conn, context.TODO())
 
-	//rdb := database.ConnectToRedis().Get()
+	rdb := database.Conn.Get()
 
 	updatedPost := new(domain.Post)
 	err := conn.PostCollection.FindOneAndUpdate(context.TODO(), bson.D{{"_id", post.Id}},
@@ -135,11 +137,11 @@ func (p PostRepoImpl) UpdateByTitle(post domain.Post) error {
 		return fmt.Errorf("error processing data")
 	}
 
-	//_, err = rdb.Do("DELETE", post.Id.String() + "getbyID")
-	//
-	//if err != nil {
-	//	panic(err)
-	//}
+	_, err = rdb.Do("HDEL", redis.Args{}.Add(post.Id.String() + "getbyID").AddFlat(new(domain.RedisPostDto))...)
+
+	if err != nil {
+		return err
+	}
 
 	fmt.Println("Removed from cache, update current tag")
 
@@ -156,7 +158,7 @@ func (p PostRepoImpl) DeleteById(post domain.Post) error {
 		}
 	}(conn, context.TODO())
 
-	//rdb := database.ConnectToRedis().Get()
+	rdb := database.Conn.Get()
 
 	_, err := conn.PostCollection.DeleteOne(context.TODO(), bson.D{{"_id", post.Id}})
 
@@ -164,13 +166,13 @@ func (p PostRepoImpl) DeleteById(post domain.Post) error {
 		return fmt.Errorf("error processing data")
 	}
 
-	//_, err = rdb.Do("DELETE", post.Id.String() + "getbyID")
-	//
-	//if err != nil {
-	//	panic(err)
-	//}
+	_, err = rdb.Do("HDEL", redis.Args{}.Add(post.Id.String() + "getbyID").AddFlat(new(domain.RedisPostDto))...)
 
-	fmt.Println("Removed from cache, delete current tag")
+	if err != nil {
+		return err
+	}
+
+	fmt.Println("Removed from cache, delete current post")
 
 	return nil
 }
@@ -193,13 +195,29 @@ func (p PostRepoImpl) FindPostById(id primitive.ObjectID) (*domain.PostDto, erro
 		return nil, err
 	}
 
-	rdb := database.ConnectToRedis().Get()
+	rdb := database.Conn.Get()
 
-	_, err = rdb.Do("SET", id.String() + "getbyID", p.postDto)
+	rp := new(domain.RedisPostDto)
+
+	b, err := msgpack.Marshal(&p.postDto.StoryImages)
+	crb, err := msgpack.Marshal(&p.postDto.CreatedAt)
+	urb, err := msgpack.Marshal(&p.postDto.UpdatedAt)
+
+	rp.Tag = p.postDto.Tag
+	rp.Title = p.postDto.Title
+	rp.Content = p.postDto.Content
+	rp.Author = p.postDto.Author
+	rp.MainImage = p.postDto.MainImage
+	rp.UpdatedAt = urb
+	rp.CreatedAt = crb
+	rp.Updated = p.postDto.Updated
+	rp.StoryImages = b
+
+	_, err = rdb.Do("HMSET", redis.Args{}.Add(id.String() + "getbyID").AddFlat(rp)...)
 
 	if err != nil {
 		fmt.Println("Found in cache in find by ID...")
-		panic(err)
+		return nil, err
 	}
 	fmt.Println("Cached in find by ID...")
 
@@ -243,14 +261,24 @@ func (p PostRepoImpl) FeaturedPosts() (*domain.PostList, error) {
 	p.postList.NumberOfPages = 1
 	p.postList.NumberOfPosts = int64(len(p.postPreviews))
 
-	rdb := database.ConnectToRedis().Get()
+	rdb := database.Conn.Get()
 
-	_, err = rdb.Do("SET", "featuredstories", p.postList)
+	rp := new(domain.RedisPostList)
+
+	b, err := msgpack.Marshal(&p.postList.Posts)
+
+	rp.NumberOfPosts = p.postList.NumberOfPosts
+	rp.CurrentPage = p.postList.CurrentPage
+	rp.NumberOfPages = p.postList.NumberOfPages
+	rp.Posts = b
+
+	_, err = rdb.Do("HMSET", redis.Args{}.Add("featuredstories").AddFlat(rp)...)
 
 	if err != nil {
 		fmt.Println("Found in cache in find by ID...")
-		panic(err)
+		return nil, err
 	}
+
 	fmt.Println("Cached in find by ID...")
 	return &p.postList, nil
 }
