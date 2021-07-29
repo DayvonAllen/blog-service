@@ -43,7 +43,6 @@ func ConnectToDB() {
 	tagsCollection := db.Collection("tags")
 	blackListCollection := db.Collection("blacklist")
 
-
 	dbConnection := &Connection{client, postsCollection, tagsCollection,blackListCollection,db}
 	MongoConn = dbConnection
 }
